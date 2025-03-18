@@ -61,11 +61,19 @@ func PostStudents(w http.ResponseWriter, r *http.Request) {
 	defer stmt.Close()
 
 	// Eksekusi statement
-	_, err = stmt.Exec(student.NIS, student.Name, student.Gender)
+	res, err := stmt.Exec(student.NIS, student.Name, student.Gender)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	
+	student.ID = int(id)
 
 	// Set header response sebagai JSON
 	w.Header().Set("Content-Type", "application/json")
@@ -96,15 +104,27 @@ func PutStudents(w http.ResponseWriter, r *http.Request) {
 	defer stmt.Close()
 
 	// Eksekusi statement
-	_, err = stmt.Exec(student.NIS, student.Name, student.Gender, student.ID)
+	res, err := stmt.Exec(student.NIS, student.Name, student.Gender, student.ID)
+
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	rows, err := res.RowsAffected()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if rows == 0 {
+		http.Error(w, "Data not found", http.StatusNotFound)
+		return
+	}
+
 	// Kirim response
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(student)
+	json.NewEncoder(w).Encode(rows)
 }
 
 func DeleteStudents(w http.ResponseWriter, r *http.Request) {
@@ -128,9 +148,20 @@ func DeleteStudents(w http.ResponseWriter, r *http.Request) {
 	defer stmt.Close()
 
 	// Eksekusi statement
-	_, err = stmt.Exec(student.ID)
+	res, err := stmt.Exec(student.ID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	rows, err := res.RowsAffected()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if rows == 0 {
+		http.Error(w, "Data not found", http.StatusNotFound)
 		return
 	}
 
